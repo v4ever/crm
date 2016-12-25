@@ -1,0 +1,57 @@
+1. 使用 tag 文件定义自定义标签.
+
+1). 可以使用 tag 文件的方式来定义自定义标签. 先前使用过标签处理器类(继承 SimpleTagSupport)来定义自定义标签. 
+2). 不能直接访问这个 Tag 文件
+3). tag 文件是扩展名必须为 tag
+4). tag 文件的结构几乎和 JSP 文件相同: 
+一个 Tag 文件中可以有普通的 HTML 标记符、某些特殊的指令标记、 成员变量和方法的声明、Java 程序片段和 Java 表达式
+5). tag文件只能放在如下位置:
+	①*. WEB-INF/tags
+	②*. WEB-INF/tags 的子目录
+	③. WEB-INF/lib 中 jar 包的 META-INF/tags
+	④. WEB-INF/lib 中 jar 包的 META-INF/tags 下的子目录
+	⑤. jar 包中的 tag 文件需要 tld
+	
+6). 使用 <taglib> 指令标记引入自定义标签库. 
+<taglib>指令的格式如下: <%@ taglib tagdir="自定义标记库的位置" prefix="前缀">
+7). 若 JSP 页面调用一个 tag 文件时需要动态地向该 tag 文件传递信息, 则需要使用带有标记体的标签, tag 文件通过使用 <jsp:doBody /> 
+标签处理 JSP 页面传递过来的标签体
+
+8). tag 文件的 tag 指令: 	
+I. tag 文件中的 tag 指令类似于 JSP 文件中的 page 指令. tag 文件通过使用 tag 指令可以指定某些属性的值, 以便从总体上影响 tag 文件的
+处理和表示. tag指令的语法为: <%@ tag 属性1="属性值" 属性2="属性值" … 属性n="属性值"%>
+一个 tag 文件中可以使用多个 tag 指令, 因此经常使用多个 tag 指令为属性指定需要的值：
+ <%@ tag 属性1="属性值"%>
+ <%@ tag 属性2="属性值"%>
+ ...
+
+II. tag 指令可以操作的属性有: body-content、language、import、pageEncoding。
+
+III^^. body-content 属性可以确定 JSP 页面使用 Tag 标记定义的自定义标签是否可以有标记体, 如果允许有标记体, 该属性会给出标记体内容的类型。
+	> body-content属性值有: empty、tagdependent、scriptless. 默认值是scriptless。  
+	> 属性的值是 empty: 标签体为空 
+	> 属性的值是 tagdependent 或 scriptless: 有标签体
+	> 属性值是 scriptless, 则标签体中不能有 Java 代码. 属性值是 tagdependent, 则标签体内容按纯文本处理.
+	
+IV. language 属性的值指定 tag 文件使用的脚本语言, 目前只能取值java, 其默认值就是java.
+
+V.  import 属性的作用是为 tag 文件引入需要的包或类. import 属性可以取多个值. 
+默认引入的类: "java.lang.*"、 "javax.servlet.*"、javax.servlet.jsp.*"、"javax.servlet.http.*"。 
+
+VI. pageEncoding 属性: 指定 tag 文件的字符编码, 其默认值是 ISO-8859-1
+
+9). include 指令: tag 文件中也有和 JSP 文件类似的 include 指令, 使用方法和作用与 JSP 文件中的 include 指令类似
+
+10). attribute指令: tag 文件中通过使用 attribute 指令, 让使用它的 JSP 页面向该 tag 文件传递需要的属性. 
+attribute指令的格式为: <%@ attribute name="属性名" required="true"|"false" type="对象的类型"%>
+例如: <%@ attribute name="length" required="true" %>
+
+11)^^. variable 指令: tag 文件通过使用 variable 指令可以将 tag 文件中的对象返回给调用该 tag 文件的 JSP页面.
+I. variable 指令的格式: <%@ variable name-given="对象名字" variable-class="对象的类型" scope="有效范围" %> 
+
+	> variable-class: 对象的类型必须带有包名
+	> scope: AT_BEGIN; NESTED; AT_END. 
+	  NESTED: 只可以在标签体内使用的对象. AT_END: 在 tag 标记结束后才可以使用对象。
+	> 例: <%@ variable name-given="time" variable-class="java.util.Date" scope="AT_END" %> 
+  
+12). taglib 指令: 一个 tag 文件可以使用 tag 标记来调用其它标签

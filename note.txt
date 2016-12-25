@@ -1,0 +1,174 @@
+13. 加入 JPA 和 SpringData
+1). 加入并和 Spring 进行集成.
+2). 可能出现的问题: 现在使用注解的方式管理的是 mybatis 或 jdbc 的事务. 若加入 JPA & SpringData 之后, 能否使用
+注解的方式继续来管理 JPA 的事务呢 ? 若不能, 该怎么办呢 ? 
+
+myBatis 的事务是基于注解的!
+jpa 的事务时基于配置文件的!
+
+12.
+
+CREATE OR REPLACE PROCEDURE check_drain
+IS
+
+--声明游标
+CURSOR drain_cursor IS
+  --查询哪些客户已经连续 6 个月和公司没有任何的业务往来.
+  SELECT c.id, name, manager_id, o.order_date
+  FROM customers c
+  JOIN (SELECT customer_id, MAX(order_date) order_date
+        FROM orders
+        GROUP BY customer_id) o
+  ON c.id = o.customer_id
+  WHERE o.order_date < SYSDATE - 5
+  --WHERE o.order_date < ADD_MONTHS(SYSDATE, -6)
+  AND c.state = '正常';
+
+BEGIN
+
+FOR drain_info IN drain_cursor LOOP
+	--向流失预警的数据表中插入一条记录
+    INSERT INTO customer_drains(id, customer_id, last_order_date, status)
+    VALUES(CRM_SEQ.NEXTVAL, drain_info.id, drain_info.order_date, '流失预警');
+    --把当前客户的状态修改为流失预警状态
+    UPDATE customers SET state = '流失预警' WHERE id = drain_info.id;
+END LOOP;
+
+END;
+
+11. 关于 GET 请求的中文乱码问题
+1). 对于 Tomcat 而言, request.setCharacterEncoding() 仅适用于 POST 请求
+2). 若想也对 GET 请求其作用, 则需要在 server.xml 文件的 Connector 节点中加入 
+useBodyEncodingForURI="true" 属性.
+
+10. 使用StrutsMenu来生成导航菜单.
+1). 在服务器下运行 struts-menu.war
+2). 查看 menutest1.jsp 页面
+3). 再查看 struts-menu\WEB-INF\menu-config.xml 文件
+4). 再查看 struts-menu-2.4.3\docs\userguide.html Using Struts Menu outside of Struts
+5). 去除 Strutsmenu 的背景色: 通过修改 StrutsMenu 的配置文件的方式来去除背景色.
+①. 找到配置文件: /net/sf/navigator/displayer/DisplayerStrings.properties
+style\="background-color\:lightgrey"
+②. 把 jar 包复制出来
+③. 修改配置文件
+④. 再把 jar 包替换为修改后的 jar 包
+
+9. 带查询条件的分页:
+1). 前端页面的查询条件中的 
+name=search_比较方式目标属性的类型_属性名, value 就是正常输入的值. 
+<input type="text" name="search_LIKES_custName" />
+<input type="text" name="search_LIKES_title" />
+<input type="text" name="search_LIKES_contact" />
+
+2). 在 handler 中:
+①. 获取指定前缀(search_)的请求参数的 Map. 
+②. 调用 Service 方法得到 Page 对象
+③. 把 ① 的 Map 再序列化为一个查询的字符串. 传回到 List 页面.
+④. 把 Page 放入到 request 中
+⑤. 返回结果
+
+3). 在点击下一页是, 携带 2) 中的查询条件字符串. 
+
+4). Service 方法. 
+①. 把传入的 params 转为 PropertyFilter 的集合. 
+②. 把翻页相关的 firstIndex 和 endIndex 和 PropertyFilter 的集合整合为一个 mybatis 可用的 Map!
+③. 调用 myBatis Mapper 的方法来获取总记录数以及当前页面的 Content 来封装 Page 结果
+
+5). Mybatis 方法. 因为查询条件可能输入, 也可能不输入, 所以需要使用动态 SQL. 
+①. 注意: 动态 SQL 判断条件时, 不能使用 &&, 而需要使用 and. (AND 也不行)
+
+8. 完成 User 的 CRUD 以及不带查询条件的分页
+1). 使用 Restful 风格的 URL. 
+2). 在浏览器的地址栏输入 /user/list 来显示所有的 user 信息(不带查询条件的分页).
+3). User 的 enabled 为 1 表示有效, 为 0 表示无效.
+4). 新建时需要关联 角色, 而 角色 来源于 数据表. 
+5). 再完成 删除 和 修改. 
+
+7. 修改:
+1). 显示修改的表单页面:
+①. SpringMVC 表单回显的原理: 在 requst 域对象中有一个和 <form:form modelAttribute="abcd"> 标签 modelAttribute
+属性对应的 bean, 然后 SpringMVC 就会把该 bean 中的属性回显到对应的表单字段中.  
+②. 实际上显示的内容中有这样的一个字段: 创建人的name(创建人的role的name). 所以再查询的时候, 还需要查询出创建人的 name, 创建人的 
+role 的 name. 
+
+@Select("SELECT s.id, title, contact, contact_tel, cust_name, create_date, description, rate, source, status, u.name as \"createBy.name\", r.name as \"createBy.role.name\" "
+		+ "FROM sales_chances s "
+		+ "LEFT OUTER JOIN users u "
+		+ "ON s.created_user_id = u.id "
+		+ "LEFT OUTER JOIN roles r "
+		+ "ON u.role_id = r.id "
+		+ "WHERE s.id = #{id}")
+SalesChance get(@Param("id") Long id);
+
+2). 完成修改操作: 
+①. 把表单的 action 修改为 Restful 风格, 携带 id. 
+②. 因为可以定制 SQL, 所以不需要 Struts2 的 preparable 或 SpringMVC 的 @ModelAttribute 修饰的方法. 
+
+6. 删除:
+1). 使用 Restful 风格的 URL. 
+①. url: chance/{id}
+②. POST
+③. 携带一个隐藏域 <input type="hidden" name="_method" value="DELETE"/>
+
+2). 在 Handler 方法中也标识使用 DELETE 的请求方式进行接受
+
+5. 完成客户销售机会的分页和创建. 
+1). 销售机会对应的实体类为: SalesChance
+2). 实际在页面上显示的所有的销售机会为: status=1 的所有的 SalesChance. 
+3). 为了能使更多的数据能被显示, 可以通过修改数据库字段的方式. 修改 status 字段的值为 1.
+
+4). 使用 myBatis 完成分页, 需要注意的是: 实际完成分页的操作是在 Service 中完成的, 而 Mapper 只能提供最最原始的方法.
+getTotalElements() 获取总的记录数
+getContent(int fromIndex, int endIndex)  获取当前页面的 Content
+注意: Oracle 的分页需要使用 rownum 来完成(所以说需要使用子查询), 索引从 1 开始. 是一个半闭半开区间.
+
+5). Restful 风格的添加:
+①. 显示表单页面: /chance/ GET
+②. 完成添加操作: /chance/ POST
+
+6). 表单需要使用 SpringMVC 的表单标签. 
+①. readonly 属性值为 "true". 而不能为 readonly
+②. 要想显示表单页面, 必须使用 modelAttribute="chance" 属性: 
+在到达页面之前, request 域对象中必须有一个属性值(一个和表单对应的 javabean 对象)和表单字段一一对应
+
+4. 完成登录操作. 
+1). 最好的解决表单重复提交的方式是: 没有表单重复提交的问题. 即在提交表单后响应结果时, 少用转发, 多用重定向.
+2). 在重定向的情况下, 如何在重定向的结果页面得到 handler 方法中放入的提示消息呢 ? 
+①. 放入到 request 中的 key-value 肯定不行. 
+②. 把 key-value 放到 session 中 ? 但不建议把一个响应消息放入到 session 中. 
+③. 实际上 SpringMVC 是可以解决这个问题的.
+	> 在 SpringMVC 的 handler 中加入 RedirectAttributes 类型的参数
+	> 调用 RedirectAttributes 的 addFlashAttribute 加入 key-value
+	> 在 handler 方法中重定向到目标页面
+	> 注意: 重定向的页面必须是由 SpringMVC 映射过的页面. 而不能直接是目标页面
+	
+	//把 key-value 放入到 RedirectAttributes 中.
+	attributes.addFlashAttribute("message", "用户名不存在或用户名和密码不匹配或该用户不可用. ");
+	//YES. 重定向到由 SpringMVC 映射过的资源
+	return "redirect:/index"; //<mvc:view-controller path="/index" view-name="index"/>
+	
+	//NO. 直接重定向到目标资源页面
+	return "redirect:/index.jsp";
+	
+3). 从国际化资源文件中获取 key-value. 
+①. 在 SpringMVC 的配置文件中配置国际化资源文件
+②. 在国际化资源文件中加入 key-value
+③. 在 handler 类中装配 ResourceBundleMessageSource
+④. 在 hanlder 方法中调用 getMessage(String code, Object[] args, Locale locale) 方法来获取 message.
+注意: 需要在 handler 方法中加入 locale 类型的参数	
+
+3. 搭建开发环境. 
+1). 在 web.xml 文件中需要配置 CharacterEncodingFilter 和 HiddenHttpMethodFilter
+2). Oracle 数据库的驱动在 oracle\jdbc\lib 目录下. 
+
+3). 整合 myBatis 可以参考 jpetstore-6-master\src\main\webapp\WEB-INF\applicationContext.xml 文件
+4). 因为 SpringMVC 并没有提供循环、遍历和判断的标签, 所以需要加入 JSTL
+
+5). 先加入 JPA 和 hibernate 的 jar 包, 但不需要做任何的配置
+6). 注意: 可以加入 mybatis 原生的配置文件, 在其中计入 mybatis 的基本配置
+
+2. 使用的技术:
+SpringMVC、Spring、myBatis(JPA & SpringData)、Shiro、JFreeChart、Quartz、StrutsMenu...
+
+1. 开发环境:
+Oracle. SVN. Eclipse. PowerDesigener. Rose. 

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.atguigu.crm.dao.UserMapper">
+	
+	<resultMap type="com.atguigu.crm.entity.User" id="userMap">
+		<id column="id" property="id"/>
+		<result column="name" property="name"/>
+		<result column="password" property="password"/>
+		<result column="enabled" property="enabled"/>
+		<result column="salt" property="salt"/>
+		
+		<result column="role.name" property="role.name"/>
+		
+		<collection property="role.authorities" ofType="com.atguigu.crm.entity.Authority">
+			<result column="authority_name" property="name"/>
+		</collection>
+	</resultMap>
+	
+	<select id="getByName" resultMap="userMap">
+		SELECT u.id, u.name, password, u.enabled, salt, r.name as "role.name",a.name as "authority_name"
+		FROM users u 
+		LEFT OUTER JOIN roles r 
+		ON u.role_id = r.id
+		LEFT OUTER JOIN role_authority ra
+		ON r.id = ra.role_id
+		LEFT OUTER JOIN authorities a
+		ON a.id = ra.authority_id
+		WHERE u.name = #{name}
+	</select>
+	
+</mapper>

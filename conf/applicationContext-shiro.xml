@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+	
+	<!-- 配置Shiro的缓存策略,使用的是ehcache,要有ehcache.xml配置文件 -->
+	<bean id="cacheManager" class="org.apache.shiro.cache.ehcache.EhCacheManager">
+        <property name="cacheManagerConfigFile" value="classpath:ehcache-shiro.xml"/>
+    </bean>
+    
+    <!-- 配置realm实例, 以完成自定义的认证和授权 -->
+    <bean id="realm" class="com.nsitd.service.ShiroRealm"></bean>
+	
+	<!-- 配置 securityManager -->
+	<bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+        <property name="cacheManager" ref="cacheManager"/>
+        <property name="realm" ref="realm"/>
+    </bean>
+    
+    <!-- 配置 lifecycleBeanPostProcessor 实例, 会自动调用Shiro的实例bean的 init 和 destroy 方法 -->
+    <bean id="lifecycleBeanPostProcessor" class="org.apache.shiro.spring.LifecycleBeanPostProcessor"/>
+	
+	<!-- 启用Shiro的注解,必须是在配置了 lifecycleBeanPostProcessor 的前提下才能使用
+    <bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator"
+          depends-on="lifecycleBeanPostProcessor"/>
+    <bean class="org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor">
+        <property name="securityManager" ref="securityManager"/>
+    </bean>
+	-->
+	
+	<bean id="filterChainDefinitionMap" factory-bean="filterChainDefinitionMapBuilder" 
+		factory-method="buildFilterChainDefinitionMap"></bean>
+	
+	<!-- 配置哪些资源被拦截,哪个是登陆界面,如何登出 -->
+	<!-- 还要在web.xml中配置这个shiroFilter -->
+	<bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+        <property name="securityManager" ref="securityManager"/>
+        <!-- 配置登陆界面 -->
+        <property name="loginUrl" value="/index.jsp"/>
+        <!-- 没有权限访问时的响应界面 -->
+        <!-- 未登陆时,将会跳转到登陆界面 index.jsp -->
+        <property name="unauthorizedUrl" value="/unauthorized.jsp"/> 
+		
+		<!-- 可以使用实例工厂方法的方式为 ShiroFilterFactoryBean 的  filterChainDefinitionMap 属性配置 bean
+			 这样就可以从数据库中读取权限 -->
+		<!--  
+		<property name="filterChainDefinitionMap" ref="filterChainDefinitionMap"></property>
+		-->
+		
+		<!-- 配置哪些界面是需要授权后才能访问的 -->
+        <property name="filterChainDefinitions">
+            <value>
+            	<!-- 匿名就可以进行访问的界面 -->
+            	<!-- 登录界面,登录方法的路径,静态资源文件必须要是匿名可访问的 -->
+            	<!-- 不然会形成一个死循环,即我要访问内部,需要登录,但是登录界面又需要登录以后才可以访问,这样会停留在登录界面不动 -->
+                /index.jsp = anon 
+                /static/** = anon
+                /images/** = anon
+                /index = anon
+                /user/shiro-login = anon
+                <!-- 需要有指定权限才能访问的界面,使用的是Shiro内置的roles过滤器 -->
+                /role/** = roles[role]
+				/user/** = roles[user]
+				/chance/** = roles[chance]
+				/plan/** = roles[plan]
+				/dict/** = roles[dict]
+				/product/** = roles[product]
+				/storage/** = roles[storage]
+				/customer/** = roles[customer]
+				/contact/** = roles[customer]
+                /test/** = roles[test]
+                <!-- 退出登陆的方法,使用的是Shiro内置的logout过滤器 -->
+                /logout = logout
+                <!-- 其他界面必须经过授权才能访问 
+                	 这项配置一定要放在所有配置的最后 -->
+                /** = authc
+            </value>
+        </property>
+    </bean>
+
+</beans>
